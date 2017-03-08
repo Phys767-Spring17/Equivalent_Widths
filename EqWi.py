@@ -7,6 +7,7 @@ datfile =  fits.open('filename')
 hdr = datfile[1].header
 
 "Kelle was here"
+"Victoria's also been here"
 
 #try:
 #        data = datfile[1].data
