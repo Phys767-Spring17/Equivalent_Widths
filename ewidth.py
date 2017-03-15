@@ -1,73 +1,76 @@
 
-"""
-Jean-paul Ventura
-January 12, 2017
-Modified: February 20th, 2016
-"""
+# Jean-paul Ventura
+# January 12, 2017
+# Modified: February 20th, 2016
 
 from astropy.io import fits
+import numpy as np
 
-def ewidth(sdssfits,w1,w2,w3,w4):
+# Calculate equivalent width
+def eqwidth(filename,wavelength1,wavelength2,wavelength3,wavelength4):
+"""
+This function measures the equivalent width of spectral emission/absorption features.
 
-	""" 
-	Measure equivalent width of a spectral line feature in a specified 
-	continuum window.
+====================
+Function parameters: 
+====================
+
+filename 	- SDSS spectra .fits filename entered as a string. You may specify entire
+			  path as a string, or if file is located in the current working directory, 
+			  simply the filename (e.g. 'SDSS-12345.fits') 
+
+wavelength1 - wavelength value where continuum region to the left of the spectral feature begins.
+
+wavelength2 - wavelength value where continuum region to the left of the spectral feature ends.
+
+wavelength3 - wavelength value where continuum region to the right of the spectral feature begins.
+
+wavelength4 - wavelength value where continuum region to the right of the spectral feature ends.
+
+=================
+Function returns:
+=================
+
+The measured equivalent width of the spectral emission/absorption feature
+"""
 	
-	==========
-	ARGUMENTS:
-	==========
-	sdssfits - full path to sdssfits spectrum file or just filename if in working
-			   directory
-	
-	w1, w2  - wavelengths that specify continuum region left-adjacent to 
-			  the spectral line
+	hdu = fits.open(filename) 
 
-	w3, w4  - wavelengths that specify continuum region right-adjacent to 
-			  the spectral line
-
-	=======
-	RETURNS 
-	=======
-
-
-	"""
-	hdu = fits.open(sdssfits) 
-
-	wlen = 10**np.array(hdu[1].data['loglam'])
+	lambda = 10**np.array(hdu[1].data['loglam'])
 	flux = hdu[1].data['flux']
 
 	#designate fundamental and continuum indices
-	fuind = (wlen >= w1) & (wlen <= w4)
-	coind = ((wlen >= w1) & (wlen <= w2)) | ((wlen >= w3) & (wlen <= w4))
+	fuind = (lambda >= wavelength1) & (lambda <= wavelength4)
+	coind = ((lambda >= wavelength1) & (lambda <= wavelength2)) | ((lambda >= wavelength3) & (lambda <= wavelength4))
 
-	x1 = wlen[coind]
+	x1 = lambda[coind]
 	y1 = flux[coind]
-	m,c = polyfit(x1,y1,1)
+	m,c = np.polyfit(x1,y1,1)
 	# #print m,c
 	# rms = sqrt( mean( (m*x1 + c - y1)**2 ) )
-	indx = np.where((wlen > 8250) & (wlen < 8350))
+	indx = np.where((lambda > 8250) & (lambda < 8350))
 	avgval = flux[indx].mean()
 	nflux = flux/avgval
-	wlen = wlen[fuind]
+	lambda = lambda[fuind]
 	flux = flux[fuind]
 	
 	
-	dwlen= wlen[2]-wlen[1]
-	fitl = m*w + c
+	dlambda= lambda[2]-lambda[1]
+	fitl = m*lambda + c
 
 	
 
-	ewind = (wlen >= w2) & (wlen <= w3)
-	fx = sum(1-nflux[ewind])*dwlen
+	ewind = np.where((lambda >= w2) & (lambda <= w3))
+	eqwi = sum(1-nflux[ewind])*dlambda
 
 	# For error
 	#fx1, err = mcerr(wav,dat,w2,w3,m,c,rms)
 
-	return fx
+	return eqwi
 
-# =========================
+#=========================
 
-#def mcerr(wav,dat,w1,w2,m,c,rms):
+# def mcerr(wav,dat,w1,w2,m,c,rms):
 #	siz = 3000
 #	guess = []
 #	dlam = wav[2]-wav[1]
