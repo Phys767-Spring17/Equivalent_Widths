@@ -1,10 +1,10 @@
-# Equivalent_widths
+# EqWi (Equivalent Widths):
 
-Python code to calculate the equivalent widths given spectrum of various file extensions using  [PySpecKit](https://github.com/pyspeckit/pyspeckit). By: Jean-Paul Ventura
+Python script to calculate the equivalent widths of spectral line emission & absorption features for various spectral data file types using the pyspeckit module [PyspecKit](https://github.com/pyspeckit/pyspeckit). By Jean-Paul Ventura 
 
-### Information
-Created on February 16, 2017
+### Information ###
 
-### Referencing
+### Referencing ###
 
-### License
+### License ###
+
