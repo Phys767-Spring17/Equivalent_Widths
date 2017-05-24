@@ -7,9 +7,8 @@ from astropy.io import fits
 import numpy as np
 
 
-# Calculate equivalent width
 def eqwidth(filename,wavelength1,wavelength2,wavelength3,wavelength4):
-	'''
+	"""
 
 	This function measures the equivalent width of spectral emission/absorption features.
 	
@@ -33,9 +32,9 @@ def eqwidth(filename,wavelength1,wavelength2,wavelength3,wavelength4):
 	Function returns:
 	=================
 	
-	The measured equivalent width of the spectral emission/absorption feature
+	 eqwi - The measured equivalent width of the spectral emission/absorption feature
 
-	'''
+	"""
 
 	# Open .fits file 
 	hdu = fits.open(filename) 
@@ -45,51 +44,128 @@ def eqwidth(filename,wavelength1,wavelength2,wavelength3,wavelength4):
 	flux = hdu[1].data['flux']
 
 
-	# Normalize flux by dividing flux array by mean flux value over relatively quiet
-	# continuum region
-	indx = np.where((lmbda > 8250) & (lmbda < 8350))
-	avgval = flux[indx].mean()
-	nflux = flux/avgval
 
-
-	# Index for continuum region where line feature is found
+	# Index for continuum region where entire line feature is found (wings + emission line)
 	fuindx = (lmbda >= wavelength1) & (lmbda <= wavelength4)
 	
-	# Index for the line feature itself
+	# Index for both of the wings of the line feature
 	coindx = ((lmbda >= wavelength1) & (lmbda <= wavelength2)) | ((lmbda >= wavelength3) & (lmbda <= wavelength4))
 
-	# Isolate the line feature wavelength region
+	# Isolate the wavelength subarrays pertaining to both of the wings of the line feature
 	x1 = lmbda[coindx]
 	
-	#Isolate the normalized flux over the line feature wavelength region
+	#Isolate the normalized flux subarrays of the line features wings.
 	y1 = nflux[coindx]
 	
-	#fit 1st degree polynomial to the line feature
+	# Generate first degree polynomial coefficients that correspond to the line wings
 	m,c = np.polyfit(x1,y1,1)
-	
 	#print m,c
-	#rms = sqrt( mean( (m*x1 + c - y1)**2 ) )
 	
+	# calculate the RMSE for the baseline for later use to generate error array.
+	rmse = sqrt( mean( (m*x1 + c - y1)**2 ) )
+	
+	# Assign the wavelength and normalized flux arrays over the entire feature (wings + line) to new variables
 	lmbda = lmbda[fuindx]
-	flux = nflux[fuindx]
+	flux = flux[fuindx]
 	
+
+	# using the coefficients of the deg(1) polynomial generated earlier from the wings, fit a line to them
+	# in order to establish the baseline for the line feature.
+	fitl = np.array(m*lmbda + c)
 	
+	# Normalize the flux array by dividing it by the fitline.
+	nflux = flux/fitline
+
+	# assign the differential wavelength element to a variable.
 	dlmbda= lmbda[2]-lmbda[1]
-	fitl = m*lmbda + c
-
 	
-
+	# Create index for the wavelength of the line feature itself (line without the wings)
 	ewindx = np.where((lmbda >= wavelength2) & (lmbda <= wavelength3))
+	
+	# Sum continuosly over the normalized flux array and assign result to a variable.
 	eqwi = sum(1-nflux[ewindx])*dlmbda
+ 	
+ 	# Calculate the uncertainty in the equivalent with measurement
+	eqwi1, err = mcerror(lmbda,flux,wavelength2,wavelength3,m,c,rmse)
 
-	# For error
-	#fx1, err = mcerr(wav,dat,w2,w3,m,c,rms)
+	# Return the result of the equivalent width measurement and associated error
+	return eqwi, err
 
-	return eqwi
+
+def mcerror(lmbda,flux,wavelength2,wavelength3,m,c,rmse):
+	"""
+	This function calculates the error of an equivalent width measurement. The error is characterized
+	by the value of the RMSE above or below the baseline generated for the feature. The error is calculated
+	via the mean of multiple error values generated via 3000 iterations of the monte carlo method for the 
+	single emission feature.
+
+	==========
+	ARGUMENTS:
+	==========
+
+	lmbda -  Wavelength array of entire feature (wings + line).
+
+	flux  -  Normalized flux array of the entire feature (wings + line)
+
+	wavelength2 - wavelength value where continuum region to the left of the spectral feature ends.
+	
+	wavelength3 - wavelength value where continuum region to the right of the spectral feature begins.
+
+	m,c   -  Coefficients of a first degree polynomial fit to the wings of the entire line feature.
+
+	rmse  -  RMSE error calculated over the first degree polynomial line fit to the wings(baseline). 
+
+	========
+	RETURNS:
+	========
+	
+ 	error and standard deviation of the equivalent width measurement taken over 3000 monte carlo iterations
+
+	"""
+
+	size =  3000
+	guess= []
+	dlmbda = lmbda[2]-lmbda[1]
+
+	for i in range(size):
+	  fitl = m*lmbda + c + np.random.uniform(-1,1)*rms
+	  nflux = flux / fitl
+	  ewindx = (lmbda >= wavelength2) & (lmbda <= wavelength3)
+	  fx = sum(1-nflux[ewindx]) *dlmbda
+	  guess.append(fx)
+
+	return np.mean(guess),np.std(guess)
 
 
 #Calculate line height of spectral emission feature
 def line_height(filename,wavelength1,wavelength2,wavelength3,wavelength4):
+	"""
+	Tnis function calculates the emission line feature height as the vertical-distance between the 
+	maximum flux value and minimum flux value over the feature interval.
+
+	==========
+	ARGUMENTS:
+	==========
+	
+	filename 	- SDSS spectra .fits filename entered as a string. You may specify entire
+				  path as a string, or if file is located in the current working directory, 
+				  simply the filename (e.g. 'SDSS-12345.fits') 
+	
+	wavelength1 - wavelength value where continuum region to the left of the spectral feature begins.
+	
+	wavelength2 - wavelength value where continuum region to the left of the spectral feature ends.
+	
+	wavelength3 - wavelength value where continuum region to the right of the spectral feature begins.
+	
+	wavelength4 - wavelength value where continuum region to the right of the spectral feature ends.
+
+	========
+	RETURNS:
+	========
+
+	lnheight - line height of spectral emission feature.
+
+	"""
 	
 	# Open sloan .fits file
 	hdu = fits.open(filename) 
@@ -98,27 +174,40 @@ def line_height(filename,wavelength1,wavelength2,wavelength3,wavelength4):
 	lmbda = 10**np.array(hdu[1].data['loglam'])
 	flux = hdu[1].data['flux']
 
-	# Normalize flux by dividing flux array by mean flux value over relatively quiet
-	# continuum region
-	indx = np.where((lmbda > 8250) & (lmbda < 8350))
-	avgval = flux[indx].mean()
-	nflux = flux/avgval
+ 	# Index for continuum region where entire line feature is found (wings + emission line)
+	fuindx = (lmbda >= wavelength1) & (lmbda <= wavelength4)
+	
+	# Index for both of the wings of the line feature
+	coindx = ((lmbda >= wavelength1) & (lmbda <= wavelength2)) | ((lmbda >= wavelength3) & (lmbda <= wavelength4))
 
-	# designate fundamental and continuum indices
-	fuind = (lmbda >= wavelength1) & (lmbda <= wavelength4)
-	coind = ((lmbda >= wavelength1) & (lmbda <= wavelength2)) | ((lmbda >= wavelength3) & (lmbda <= wavelength4))
-
-	lmbda = lmbda[fuind]
-	flux = nflux[fuind]
-	x1 = lmbda[coind]
-	y1 = nflux[coind]
+	# Isolate the wavelength subarrays pertaining to both of the wings of the line feature
+	x1 = lmbda[coindx]
+	
+	#Isolate the normalized flux subarrays of the line features wings.
+	y1 = nflux[coindx]
+	
+	# Generate first degree polynomial coefficients that correspond to the line wings
 	m,c = np.polyfit(x1,y1,1)
 	#print m,c
-	rms = sqrt( mean( (m*x1 + c - y1)**2 ) )
 	
+	# calculate the RMSE for the baseline for later use to generate error array.
+	rmse = sqrt( mean( (m*x1 + c - y1)**2 ) )
+	
+	# Assign the wavelength and normalized flux arrays over the entire feature (wings + line) to new variables
+	lmbda = lmbda[fuindx]
+	flux = flux[fuindx]
+	
+	# using the coefficients of the deg(1) polynomial generated earlier from the wings, fit a line to them
+	# in order to establish the baseline for the line feature.
+	fitl = np.array(m*lmbda + c)
+	
+	# Normalize the flux array by dividing it by the fitline.
+	nflux = np.array(flux/fitline)
 
-	lnheight = max(y1)-min(y1)
+	ewindx = np.where((lmbda >= wavelength2) & (lmbda <= wavelength3))
 
+	lnheight = max(nflux[ewindx])-min(nflux[ewindx])
+	
 	return lnheight
 
 
