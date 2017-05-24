@@ -122,13 +122,19 @@ def mcerror(lmbda,flux,wavelength2,wavelength3,m,c,rmse):
  	error and standard deviation of the equivalent width measurement taken over 3000 monte carlo iterations
 
 	"""
-
+	# assign the number of monte carlo iterations to variable 'size'.
 	size =  3000
+	
+	# Create an empty list to which eqmeasurements will be appended.
 	guess= []
+	
+	# Define the differential wavelength element and assign to variable 'dlmbda'.
 	dlmbda = lmbda[2]-lmbda[1]
 
+	# Iterate error calculations over equivalent width measurement 3000 times by drawing randomly from 
+	# a uniform distribution about the RMSE. Then take the mean and std dev of those values and return values.
 	for i in range(size):
-	  fitl = m*lmbda + c + np.random.uniform(-1,1)*rms
+	  fitl = m*lmbda + c + np.random.uniform(-1,1)*rmse
 	  nflux = flux / fitl
 	  ewindx = (lmbda >= wavelength2) & (lmbda <= wavelength3)
 	  fx = sum(1-nflux[ewindx]) *dlmbda
@@ -204,8 +210,10 @@ def line_height(filename,wavelength1,wavelength2,wavelength3,wavelength4):
 	# Normalize the flux array by dividing it by the fitline.
 	nflux = np.array(flux/fitline)
 
+	# Create index for the wavelength of the line feature itself (line without the wings)
 	ewindx = np.where((lmbda >= wavelength2) & (lmbda <= wavelength3))
 
+	# Calculate the line height for the featrue and assign to a variable.
 	lnheight = max(nflux[ewindx])-min(nflux[ewindx])
 	
 	return lnheight
