@@ -1,10 +1,6 @@
-# EqWi (Equivalent Widths):
+# EqWiS (Equivalent Widths):
 
-Python script to calculate the equivalent widths of spectral line emission & absorption features for various spectral data file types using the pyspeckit module [PyspecKit](https://github.com/pyspeckit/pyspeckit). By Jean-Paul Ventura 
+Python module to calculate the equivalent widths of spectral line emission features, emission feature line height, and uncertainties via the Monte Carlo Method of Sloan Digital Sky Survey (SDSS) Spectra. By Jean-Paul Ventura 
 
-### Information ###
 
-### Referencing ###
-
-### License ###
 
